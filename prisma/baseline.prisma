@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  RECEIVED
+  PREPARING
+  READY
+  DELIVERING
+  FINISHED
+  CANCELED
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+  TABLE
+  SCHEDULED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELED
+}
+
+model Merchant {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  phone           String?
+  description     String?
+  logoUrl         String?
+  coverUrl        String?
+  primaryColor    String         @default("#16a34a")
+  deliveryMinimum Decimal?       @db.Decimal(10, 2)
+  pickupMinimum   Decimal?       @db.Decimal(10, 2)
+  isOpen          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  users           User[]
+  categories      Category[]
+  products        Product[]
+  customers       Customer[]
+  orders          Order[]
+  couriers        Courier[]
+  deliveryZones   DeliveryZone[]
+  cashSessions    CashSession[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  role       String   @default("ADMIN")
+  password   String?
+  createdAt  DateTime @default(now())
+
+  @@unique([merchantId, email])
+}
+
+model Category {
+  id         String    @id @default(cuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  position   Int       @default(0)
+  active     Boolean   @default(true)
+  products   Product[]
+
+  @@index([merchantId, position])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  merchantId  String
+  merchant    Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  imageUrl    String?
+  active      Boolean     @default(true)
+  featured    Boolean     @default(false)
+  stock       Int?
+  position    Int         @default(0)
+  optionGroups OptionGroup[]
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([merchantId, categoryId, position])
+}
+
+model OptionGroup {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  min       Int      @default(0)
+  max       Int      @default(1)
+  required  Boolean  @default(false)
+  options   ProductOption[]
+}
+
+model ProductOption {
+  id        String      @id @default(cuid())
+  groupId   String
+  group     OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name      String
+  price     Decimal     @default(0) @db.Decimal(10, 2)
+  active    Boolean     @default(true)
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  email      String?
+  address    String?
+  orders     Order[]
+  createdAt  DateTime @default(now())
+
+  @@unique([merchantId, phone])
+}
+
+model Courier {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  active     Boolean  @default(true)
+  feeType    String   @default("FIXED")
+  feeValue   Decimal? @db.Decimal(10, 2)
+  orders     Order[]
+  createdAt  DateTime @default(now())
+}
+
+model DeliveryZone {
+  id           String   @id @default(cuid())
+  merchantId   String
+  merchant     Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name         String
+  fee          Decimal  @db.Decimal(10, 2)
+  estimatedMin Int?
+  estimatedMax Int?
+  active       Boolean  @default(true)
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  code          Int           @default(autoincrement())
+  merchantId    String
+  merchant      Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  courierId     String?
+  courier       Courier?      @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  type          OrderType
+  status        OrderStatus   @default(RECEIVED)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod String?
+  subtotal      Decimal       @db.Decimal(10, 2)
+  deliveryFee   Decimal       @default(0) @db.Decimal(10, 2)
+  discount      Decimal       @default(0) @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  address       String?
+  tableNumber   String?
+  notes         String?
+  scheduledAt   DateTime?
+  items         OrderItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([merchantId, status, createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name      String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+  notes     String?
+}
+
+model CashSession {
+  id            String   @id @default(cuid())
+  merchantId    String
+  merchant      Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  openedBy      String
+  openingAmount Decimal  @db.Decimal(10, 2)
+  closingAmount Decimal? @db.Decimal(10, 2)
+  openedAt      DateTime @default(now())
+  closedAt      DateTime?
+}

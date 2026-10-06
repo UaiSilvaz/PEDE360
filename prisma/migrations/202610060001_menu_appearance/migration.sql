@@ -1,0 +1,1 @@
+ALTER TABLE "Merchant" ADD COLUMN "appearance" JSONB NOT NULL DEFAULT '{}';

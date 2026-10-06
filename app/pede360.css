@@ -1,0 +1,220 @@
+/* PEDE360 brand: vivid green, white and accessible action colors. */
+:root {
+  --brand-green: #18d058;
+  --brand-bright: #48f078;
+  --green: #078832;
+  --green-dark: #056c28;
+  --green-soft: #e9fbee;
+  --bg: #f5f9f6;
+  --text: #192e20;
+  --muted: #627468;
+  --border: #e0ebe3;
+}
+html[data-theme="dark"] {
+  --green: #18d058;
+  --green-dark: #72ef98;
+  --green-soft: #173a23;
+}
+.pede360-icon {
+  display: block;
+  object-fit: contain;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.friendly-shell .brand-mark {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border-radius: 12px;
+}
+.friendly-shell .brand b {
+  font-size: 24px;
+  letter-spacing: -1px;
+}
+.brand-period,
+.auth-brand b span {
+  color: var(--green);
+}
+.primary-btn {
+  background: linear-gradient(135deg, #48f078, #18d058);
+  color: #092413;
+  box-shadow: 0 4px 14px #18d05824;
+}
+.primary-btn:hover {
+  background: #18d058;
+}
+html[data-theme="dark"] .primary-btn {
+  background: #18d058;
+  color: #092413;
+}
+html[data-theme="dark"] .primary-btn:hover {
+  background: #48f078;
+}
+.friendly-shell .sidebar nav a.active {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.nav-active-dot {
+  background: var(--brand-green);
+}
+.auth-page {
+  background:
+    radial-gradient(ellipse at 20% 15%, #48f0781a, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, #18d05815, transparent 45%), var(--bg);
+  padding: 32px 20px;
+}
+.auth-card {
+  border-radius: 24px;
+  box-shadow: 0 24px 80px #123b2010;
+  border: 1px solid var(--border);
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.auth-brand b {
+  font-size: 32px;
+  letter-spacing: -1.5px;
+  color: var(--text);
+}
+.auth-card .eyebrow {
+  color: var(--green-dark);
+  letter-spacing: 1.5px;
+  font-size: 10px;
+}
+.auth-card h1 {
+  letter-spacing: -1px;
+}
+.store-cover {
+  background: linear-gradient(120deg, #056c28, #18d058 65%, #48f078);
+}
+.store-cover-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.store-cover-label::before {
+  content: "";
+  width: 44px;
+  height: 32px;
+  background: url("/brand/PEDE360%202.png") center / contain no-repeat;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--brand-green);
+}
+@media (max-width: 600px) {
+  .auth-page {
+    padding: 20px 14px;
+  }
+  .auth-card {
+    border-radius: 20px;
+  }
+}
+
+/* Original PNG logos, with their transparent margins preserved. */
+.pede360-icon {
+  border-radius: 0;
+}
+.friendly-shell .brand-mark {
+  width: 50px;
+  height: 50px;
+}
+.friendly-shell .brand-mark .pede360-icon {
+  width: 56px;
+  height: 56px;
+  max-width: none;
+}
+.auth-brand .pede360-icon {
+  width: 88px;
+  height: 88px;
+}
+.store-cover-label::before {
+  width: 40px;
+  height: 40px;
+}
+.friendly-shell .primary-btn,
+.auth-card .primary-btn {
+  color: #092413;
+}
+.friendly-shell .primary-btn:hover,
+.auth-card .primary-btn:hover {
+  background: #18d058;
+}
+.friendly-shell .nav-active-dot {
+  background: var(--brand-green);
+}
+.friendly-shell .sidebar nav a.active {
+  box-shadow: inset 3px 0 0 var(--brand-green);
+}
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: #8ddda5;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--brand-green);
+}
+html[data-theme="dark"] .friendly-shell .primary-btn:hover {
+  background: #48f078;
+}
+.friendly-shell .primary-btn,
+.auth-card .primary-btn {
+  background: linear-gradient(135deg, var(--brand-bright), var(--brand-green));
+  color: #092413;
+}
+html[data-theme="dark"] .friendly-shell .primary-btn {
+  background: linear-gradient(135deg, var(--brand-bright), var(--brand-green));
+}
+
+.login-store-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bingo-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.bingo-credit-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 82px;
+  height: 38px;
+  background: transparent;
+  border-radius: 0;
+  overflow: hidden;
+}
+.bingo-credit-logo img {
+  filter: grayscale(1) brightness(0.6);
+  opacity: 0.4;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.bingo-credit strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.workspace-footer .bingo-credit {
+  font-size: 11px;
+}
+@media (max-width: 550px) {
+  .bingo-credit {
+    font-size: 11px;
+  }
+}

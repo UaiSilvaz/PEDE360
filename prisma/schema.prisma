@@ -1,0 +1,483 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  RECEIVED
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERING
+  FINISHED
+  CANCELED
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+  TABLE
+  SCHEDULED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELED
+}
+
+model Merchant {
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  phone                String?
+  description          String?
+  logoUrl              String?
+  coverUrl             String?
+  primaryColor         String                @default("#16a34a")
+  appearance           Json                  @default("{}")
+  deliveryMinimum      Decimal?              @db.Decimal(10, 2)
+  pickupMinimum        Decimal?              @db.Decimal(10, 2)
+  isOpen               Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  users                User[]
+  categories           Category[]
+  products             Product[]
+  customers            Customer[]
+  orders               Order[]
+  couriers             Courier[]
+  deliveryZones        DeliveryZone[]
+  cashSessions         CashSession[]
+  logoKey              String?
+  coverKey             String?
+  imageUrl             String?
+  imageKey             String?
+  address              String?
+  estimatedTime        String                @default("40–60 min")
+  paymentMethods       String[]              @default(["Pix", "Dinheiro", "Crédito", "Débito"])
+  hours                Json?
+  whatsapp             WhatsAppIntegration?
+  notifications        NotificationSettings?
+  conversations        Conversation[]
+  assets               MediaAsset[]
+  auditLogs            AuditLog[]
+  coupons              Coupon[]
+  tables               DiningTable[]
+  campaigns            Campaign[]
+  whatsappStatusEvents WhatsAppStatusEvent[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  role       String   @default("ADMIN")
+  password   String?
+  createdAt  DateTime @default(now())
+
+  imageUrl String?
+  imageKey String?
+  sessions Session[]
+
+  @@unique([merchantId, email])
+}
+
+model Category {
+  id         String    @id @default(cuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  position   Int       @default(0)
+  active     Boolean   @default(true)
+  products   Product[]
+  imageUrl   String?
+  imageKey   String?
+
+  @@index([merchantId, position])
+}
+
+model Product {
+  id           String         @id @default(cuid())
+  merchantId   String
+  merchant     Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name         String
+  description  String?
+  price        Decimal        @db.Decimal(10, 2)
+  imageUrl     String?
+  imageKey     String?
+  images       ProductImage[]
+  active       Boolean        @default(true)
+  featured     Boolean        @default(false)
+  stock        Int?
+  position     Int            @default(0)
+  optionGroups OptionGroup[]
+  orderItems   OrderItem[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([merchantId, categoryId, position])
+}
+
+model OptionGroup {
+  id        String          @id @default(cuid())
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  min       Int             @default(0)
+  max       Int             @default(1)
+  required  Boolean         @default(false)
+  position  Int             @default(0)
+  options   ProductOption[]
+}
+
+model ProductOption {
+  id       String      @id @default(cuid())
+  groupId  String
+  group    OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name     String
+  price    Decimal     @default(0) @db.Decimal(10, 2)
+  active   Boolean     @default(true)
+  position Int         @default(0)
+}
+
+model Customer {
+  id              String         @id @default(cuid())
+  merchantId      String
+  merchant        Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String
+  email           String?
+  address         String?
+  orders          Order[]
+  conversations   Conversation[]
+  whatsappConsent Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+
+  @@unique([merchantId, phone])
+}
+
+model Courier {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  active     Boolean  @default(true)
+  feeType    String   @default("FIXED")
+  feeValue   Decimal? @db.Decimal(10, 2)
+  orders     Order[]
+  createdAt  DateTime @default(now())
+}
+
+model DeliveryZone {
+  id           String   @id @default(cuid())
+  merchantId   String
+  merchant     Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name         String
+  fee          Decimal  @db.Decimal(10, 2)
+  estimatedMin Int?
+  estimatedMax Int?
+  active       Boolean  @default(true)
+}
+
+model Order {
+  id             String            @id @default(cuid())
+  code           Int               @default(autoincrement())
+  merchantId     String
+  merchant       Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customerId     String?
+  customer       Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  courierId      String?
+  courier        Courier?          @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  type           OrderType
+  status         OrderStatus       @default(RECEIVED)
+  paymentStatus  PaymentStatus     @default(PENDING)
+  paymentMethod  String?
+  subtotal       Decimal           @db.Decimal(10, 2)
+  deliveryFee    Decimal           @default(0) @db.Decimal(10, 2)
+  discount       Decimal           @default(0) @db.Decimal(10, 2)
+  total          Decimal           @db.Decimal(10, 2)
+  address        String?
+  tableNumber    String?
+  notes          String?
+  scheduledAt    DateTime?
+  items          OrderItem[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  conversationId String?
+  conversation   Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  idempotencyKey String?
+  requestHash    String?
+  cashChangeFor  Decimal?          @db.Decimal(10, 2)
+  cpf            String?
+  events         OrderEvent[]
+  notifications  NotificationJob[]
+
+  @@unique([merchantId, idempotencyKey])
+  @@index([merchantId, status, createdAt])
+}
+
+model OrderItem {
+  id        String            @id @default(cuid())
+  orderId   String
+  order     Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name      String
+  quantity  Int
+  unitPrice Decimal           @db.Decimal(10, 2)
+  total     Decimal           @db.Decimal(10, 2)
+  notes     String?
+  options   OrderItemOption[]
+}
+
+model CashSession {
+  id            String         @id @default(cuid())
+  merchantId    String
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  openedBy      String
+  openingAmount Decimal        @db.Decimal(10, 2)
+  closingAmount Decimal?       @db.Decimal(10, 2)
+  openedAt      DateTime       @default(now())
+  closedAt      DateTime?
+  movements     CashMovement[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  key       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model MediaAsset {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  key        String   @unique
+  url        String
+  folder     String
+  createdAt  DateTime @default(now())
+
+  @@index([merchantId])
+}
+
+model OrderItemOption {
+  id          String    @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  name        String
+  price       Decimal   @db.Decimal(10, 2)
+}
+
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  userId    String?
+  createdAt DateTime    @default(now())
+}
+
+enum IntegrationStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+}
+
+model WhatsAppIntegration {
+  id                   String            @id @default(cuid())
+  merchantId           String            @unique
+  merchant             Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  provider             String            @default("META_CLOUD")
+  wabaId               String
+  phoneNumberId        String            @unique
+  businessPhone        String
+  businessName         String?
+  accessTokenEncrypted String
+  webhookVerified      Boolean           @default(false)
+  status               IntegrationStatus @default(DISCONNECTED)
+  connectedAt          DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model NotificationSettings {
+  id                          String   @id @default(cuid())
+  merchantId                  String   @unique
+  merchant                    Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  orderReceivedWhatsapp       Boolean  @default(false)
+  orderConfirmedWhatsapp      Boolean  @default(false)
+  orderPreparingWhatsapp      Boolean  @default(false)
+  orderReadyWhatsapp          Boolean  @default(false)
+  orderOutForDeliveryWhatsapp Boolean  @default(false)
+  orderDeliveredWhatsapp      Boolean  @default(false)
+  templateName                String?
+  templateLanguage            String   @default("pt_BR")
+}
+
+model Conversation {
+  id             String    @id @default(cuid())
+  merchantId     String
+  merchant       Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  whatsappNumber String
+  lastMessageAt  DateTime  @default(now())
+  lastInboundAt  DateTime?
+  status         String    @default("OPEN")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  messages       Message[]
+  orders         Order[]
+
+  @@unique([merchantId, whatsappNumber])
+  @@index([merchantId, lastMessageAt])
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  RECEIVED
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  conversationId    String
+  conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  externalMessageId String?          @unique
+  direction         MessageDirection
+  type              String
+  text              String?
+  mediaUrl          String?
+  status            MessageStatus    @default(PENDING)
+  timestamp         DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+
+  @@index([conversationId, timestamp])
+}
+
+model WebhookReceipt {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
+
+model NotificationJob {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  state     String      @default("PENDING")
+  attempts  Int         @default(0)
+  error     String?
+  createdAt DateTime    @default(now())
+
+  @@unique([orderId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId     String?
+  entityType String
+  entityId   String
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([merchantId, createdAt])
+}
+
+model Coupon {
+  id         String    @id @default(cuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  code       String
+  percent    Int
+  minimum    Decimal   @default(0) @db.Decimal(10, 2)
+  active     Boolean   @default(true)
+  expiresAt  DateTime?
+
+  @@unique([merchantId, code])
+}
+
+model DiningTable {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  number     String
+  occupied   Boolean  @default(false)
+
+  @@unique([merchantId, number])
+}
+
+model CashMovement {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  amount    Decimal     @db.Decimal(10, 2)
+  notes     String
+  createdAt DateTime    @default(now())
+}
+
+model RateLimit {
+  id        String   @id
+  count     Int
+  expiresAt DateTime
+}
+
+model Campaign {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  text       String
+  imageUrl   String?
+  imageKey   String?
+  createdAt  DateTime @default(now())
+
+  @@index([merchantId])
+}
+
+model WhatsAppStatusEvent {
+  id                String        @id
+  merchantId        String
+  merchant          Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  externalMessageId String
+  status            MessageStatus
+  timestamp         DateTime
+
+  @@index([merchantId, externalMessageId])
+}

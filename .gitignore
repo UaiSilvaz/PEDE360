@@ -1,0 +1,16 @@
+node_modules
+.next
+.env
+.env.local
+.DS_Store
+
+.local/
+public/uploads/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Credentials and local runtime artifacts
+.env.*
+!.env.example
+*.log
