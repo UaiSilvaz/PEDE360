@@ -12,6 +12,7 @@ export class S3Provider implements StorageProvider {
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      sessionToken: process.env.S3_SESSION_TOKEN,
     },
   });
   async upload(key: string, content: Buffer, contentType: string) {

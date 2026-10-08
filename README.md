@@ -58,6 +58,8 @@ S3_PUBLIC_URL="https://SEU_PROJECT_REF.supabase.co/storage/v1/object/public/pede
 
 Use as credenciais S3 geradas para o servidor e a região exibida pelo Supabase. O cliente usa `forcePathStyle` para manter o bucket no caminho do endpoint. Após configurar, faça um redeploy. A conexão `DATABASE_URL` pode continuar na Neon.
 
+Também é possível usar a autenticação S3 por session token do Supabase: `S3_ACCESS_KEY_ID` recebe a referência do projeto, `S3_SECRET_ACCESS_KEY` recebe a chave JWT `anon` e `S3_SESSION_TOKEN` recebe o JWT `service_role`, exclusivo do servidor. Esse token nunca deve ser configurado com prefixo `NEXT_PUBLIC_`.
+
 - Desenvolvimento: sem variáveis S3, arquivos WebP ficam em `.local/uploads` e são servidos pela rota local de mídia.
 - Produção: configure todas as variáveis S3 de `.env.example`. Compatível com R2 e provedores S3. O bucket precisa permitir leitura pública pelo domínio configurado; credenciais de escrita ficam somente no servidor.
 - JPEG/PNG/WebP até 5 MB, validação com Sharp, orientação corrigida, proporção preservada, limite de resolução e metadados removidos.
