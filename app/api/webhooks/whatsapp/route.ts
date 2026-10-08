@@ -1,5 +1,8 @@
+import { after } from "next/server";
+import { processAutoReplies } from "@/lib/whatsapp/auto-reply";
 import { endpoint, ok, ApiError, readBody } from "@/lib/api";
 import { verifySignature, receiveWebhook } from "@/lib/whatsapp/webhook";
+export const maxDuration = 60;
 export const GET = endpoint(async (request) => {
   const params = new URL(request.url).searchParams;
   const token = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
@@ -29,5 +32,8 @@ export const POST = endpoint(async (request) => {
   )
     throw new ApiError(401, "SIGNATURE", "Assinatura inválida.");
   await receiveWebhook(raw);
+  after(async () => {
+    await processAutoReplies();
+  });
   return ok({ received: true });
 });

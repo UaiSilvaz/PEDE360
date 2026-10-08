@@ -8,7 +8,7 @@ async function main() {
   const bodies: string[] = [];
   try {
     const a = await db.merchant.create({
-      data: { name: "Webhook A", slug: "webhook-a-" + suffix },
+      data: { name: "Webhook A", autoReplyEnabled: true, slug: "webhook-a-" + suffix },
     });
     merchants.push(a.id);
     const b = await db.merchant.create({
@@ -65,6 +65,12 @@ async function main() {
       await db.message.count({ where: { externalMessageId: externalId } }),
       1,
     );
+    assert.equal(await db.autoReplyJob.count({ where: { message: { externalMessageId: externalId } } }), 1);
+    // A differently serialized delivery of the same message must not enqueue again.
+    const repeated = JSON.stringify(JSON.parse(inbound), null, 2);
+    bodies.push(repeated);
+    await receiveWebhook(repeated);
+    assert.equal(await db.autoReplyJob.count({ where: { message: { externalMessageId: externalId } } }), 1);
     assert.equal(
       await db.conversation.count({ where: { merchantId: b.id } }),
       0,

@@ -1,7 +1,9 @@
+import { processAutoReplies } from "@/lib/whatsapp/auto-reply";
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { endpoint, ok, ApiError } from "@/lib/api";
 import { processNotifications } from "@/lib/whatsapp/notifications";
+export const maxDuration = 60;
 export const POST = endpoint(async (request) => {
   const secret = process.env.CRON_SECRET;
   const actual = Buffer.from(request.headers.get("authorization") || "");
@@ -21,5 +23,6 @@ export const POST = endpoint(async (request) => {
   for (const id of tenants) await processNotifications(id);
   await db.rateLimit.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-  return ok({ processedTenants: tenants.length });
+  const autoReplies = await processAutoReplies();
+  return ok({ processedTenants: tenants.length, autoReplies });
 });

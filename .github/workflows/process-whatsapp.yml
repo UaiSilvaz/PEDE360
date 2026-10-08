@@ -1,0 +1,28 @@
+name: Process pending WhatsApp replies
+
+on:
+  schedule:
+    - cron: "2-57/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatsapp-auto-replies
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Process pending replies
+        env:
+          CRON_SECRET: ${{ secrets.PEDE360_CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error --max-time 70 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            https://pede360.vercel.app/api/internal/auto-replies

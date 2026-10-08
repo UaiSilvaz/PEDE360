@@ -5,6 +5,7 @@ import { api } from "@/lib/client";
 import { useResource, ResourceState } from "./shared/resource";
 import type { IntegrationView, WhatsAppTemplate } from "@/lib/whatsapp/types";
 import { toast } from "sonner";
+import WhatsAppAutoReply from "./whatsapp-auto-reply";
 import WhatsAppNumber from "./whatsapp-number";
 const labels = {
   orderReceivedWhatsapp: "Pedido recebido",
@@ -175,8 +176,12 @@ export default function WhatsAppSettings() {
   const config = r.data;
   return (
     <div className="stack">
-      <WhatsAppNumber />
-      <details className="advanced-settings">
+      <WhatsAppNumber key={config.status + String(config.connectedAt)} />
+      <WhatsAppAutoReply key={config.status + String(config.connectedAt)} />
+      <details
+        className="advanced-settings"
+        open={config.status !== "CONNECTED"}
+      >
         <summary>Mensagens automáticas e atendimento pelo painel</summary>
         <p>
           A conexão oficial com a Meta permite responder aqui e enviar
@@ -203,6 +208,32 @@ export default function WhatsAppSettings() {
           )}
           {config.status === "CONNECTED" && (
             <>
+              {config.webhookUrl && config.webhookVerifyToken && (
+                <div className="stack">
+                  <h3>Receber mensagens dos clientes</h3>
+                  <p>
+                    No aplicativo Meta, cadastre esta URL de callback e o token
+                    de verificação. Assine o evento <strong>messages</strong>{" "}
+                    para ativar as respostas automáticas.
+                  </p>
+                  <label>
+                    URL de callback
+                    <input
+                      readOnly
+                      value={config.webhookUrl}
+                      onFocus={(event) => event.target.select()}
+                    />
+                  </label>
+                  <label>
+                    Token de verificação
+                    <input
+                      readOnly
+                      value={config.webhookVerifyToken}
+                      onFocus={(event) => event.target.select()}
+                    />
+                  </label>
+                </div>
+              )}
               <p>
                 {config.businessName} · {config.businessPhone}
               </p>
@@ -307,6 +338,20 @@ export default function WhatsAppSettings() {
                 O token é criptografado no servidor e não é retornado para esta
                 tela.
               </p>
+              <label>
+                Segredo do aplicativo Meta
+                <input
+                  name="appSecret"
+                  type="password"
+                  autoComplete="off"
+                  required
+                  minLength={20}
+                />
+                <small className="field-hint">
+                  Encontre em Configurações básicas do seu aplicativo Meta.
+                  Usamos este segredo para validar as mensagens recebidas.
+                </small>
+              </label>
               <button className="primary-btn" disabled={busy}>
                 Validar e conectar
               </button>

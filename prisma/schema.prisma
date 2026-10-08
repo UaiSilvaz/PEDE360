@@ -35,6 +35,8 @@ model Merchant {
   id                   String                @id @default(cuid())
   name                 String
   slug                 String                @unique
+  autoReplyEnabled     Boolean               @default(false)
+  autoReplyMessage     String                @default("Olá! Confira nosso cardápio e faça seu pedido:")
   phone                String?
   description          String?
   logoUrl              String?
@@ -318,6 +320,8 @@ model WhatsAppIntegration {
   businessPhone        String
   businessName         String?
   accessTokenEncrypted String
+  appSecretEncrypted   String?
+  webhookVerifyToken   String?
   webhookVerified      Boolean           @default(false)
   status               IntegrationStatus @default(DISCONNECTED)
   connectedAt          DateTime?
@@ -384,6 +388,7 @@ model Message {
   status            MessageStatus    @default(PENDING)
   timestamp         DateTime         @default(now())
   createdAt         DateTime         @default(now())
+  autoReply         AutoReplyJob?
 
   @@index([conversationId, timestamp])
 }
@@ -480,4 +485,16 @@ model WhatsAppStatusEvent {
   timestamp         DateTime
 
   @@index([merchantId, externalMessageId])
+}
+
+model AutoReplyJob {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  state     String   @default("PENDING")
+  attempts  Int      @default(0)
+  error     String?
+  nextAttemptAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, nextAttemptAt])
 }

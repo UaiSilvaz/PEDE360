@@ -73,7 +73,7 @@ export function shouldAdvanceMessage(current: string, next: string) {
     (ranks[next] ?? -1) > (ranks[current] ?? -1)
   );
 }
-export async function receiveWebhook(raw: string) {
+export async function receiveWebhook(raw: string, merchantId?: string) {
   let body: unknown;
   try {
     body = JSON.parse(raw);
@@ -82,7 +82,9 @@ export async function receiveWebhook(raw: string) {
   }
   const parsed = eventSchema.safeParse(body);
   if (!parsed.success) throw new ApiError(400, "PAYLOAD", "Webhook inválido.");
-  const receiptId = createHash("sha256").update(raw).digest("hex");
+  const receiptId = createHash("sha256")
+    .update((merchantId ? merchantId + ":" : "") + raw)
+    .digest("hex");
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await db.$transaction(
@@ -98,6 +100,7 @@ export async function receiveWebhook(raw: string) {
                   wabaId: entry.id,
                   phoneNumberId: change.value.metadata.phone_number_id,
                   status: "CONNECTED",
+                  ...(merchantId ? { merchantId } : {}),
                 },
               });
               if (!config) continue;
@@ -159,7 +162,7 @@ export async function receiveWebhook(raw: string) {
                   },
                   data: { lastMessageAt: timestamp },
                 });
-                await tx.message.create({
+                const inbound = await tx.message.create({
                   data: {
                     conversationId: conversation.id,
                     externalMessageId: message.id,
@@ -172,6 +175,17 @@ export async function receiveWebhook(raw: string) {
                     timestamp,
                   },
                 });
+                const merchant = await tx.merchant.findUniqueOrThrow({
+                  where: { id: config.merchantId },
+                });
+                if (
+                  merchant.autoReplyEnabled &&
+                  message.type !== "system" &&
+                  message.type !== "unsupported"
+                )
+                  await tx.autoReplyJob.create({
+                    data: { messageId: inbound.id },
+                  });
               }
               for (const status of change.value.statuses || []) {
                 const next = status.status.toUpperCase();

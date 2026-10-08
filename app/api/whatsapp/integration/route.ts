@@ -1,6 +1,8 @@
+import { normalizePhone } from "@/lib/phone";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { endpoint, ok, json } from "@/lib/api";
+import { endpoint, ok, json, ApiError } from "@/lib/api";
+import { randomBytes } from "node:crypto";
 import { authorize } from "@/lib/security/auth";
 import { encrypt } from "@/lib/security/encryption";
 import { graph, integration } from "@/lib/whatsapp/client";
@@ -16,19 +18,23 @@ export const GET = endpoint(async (request) => {
       businessName: true,
       connectedAt: true,
       webhookVerified: true,
+      webhookVerifyToken: true,
     },
   });
   return ok({
     ...config,
     status: config?.status || "DISCONNECTED",
     webhookVerified: config?.webhookVerified || false,
-    configurationRequired: [
-      "ENCRYPTION_KEY",
-      "META_GRAPH_API_VERSION",
-      "META_APP_SECRET",
-      "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
-    ].filter((k) => !process.env[k]),
+    configurationRequired: ["ENCRYPTION_KEY", "META_GRAPH_API_VERSION"].filter(
+      (k) => !process.env[k],
+    ),
     embeddedSignup: embeddedSignupConfiguration(),
+    webhookUrl: process.env.APP_URL
+      ? new URL(
+          "/api/webhooks/whatsapp/" + encodeURIComponent(user.merchant.slug),
+          process.env.APP_URL,
+        ).href
+      : null,
   });
 });
 export const POST = endpoint(async (request) => {
@@ -38,8 +44,18 @@ export const POST = endpoint(async (request) => {
       wabaId: z.string().regex(/^\d+$/),
       phoneNumberId: z.string().regex(/^\d+$/),
       accessToken: z.string().min(20).max(4096),
+      appSecret: z.string().trim().min(20).max(128).optional(),
     })
     .parse(await json(request));
+  const appSecret = input.appSecret || process.env.META_APP_SECRET;
+  if (!appSecret)
+    throw new ApiError(
+      400,
+      "APP_SECRET",
+      "Informe o segredo do aplicativo Meta para validar os webhooks da sua loja.",
+    );
+  const appSecretEncrypted = encrypt(appSecret);
+  const webhookVerifyToken = randomBytes(32).toString("hex");
   const phone = await graph<{
     display_phone_number: string;
     verified_name: string;
@@ -56,6 +72,14 @@ export const POST = endpoint(async (request) => {
   await graph(input.accessToken, input.wabaId + "/subscribed_apps", "POST");
   const accessTokenEncrypted = encrypt(input.accessToken);
   await db.$transaction(async (tx) => {
+    await tx.merchant.update({
+      where: { id: user.merchantId },
+      data: {
+        phone: normalizePhone(
+          "+" + phone.display_phone_number.replace(/\D/g, ""),
+        ),
+      },
+    });
     await tx.whatsAppIntegration.upsert({
       where: { merchantId: user.merchantId },
       create: {
@@ -65,6 +89,8 @@ export const POST = endpoint(async (request) => {
         businessPhone: phone.display_phone_number,
         businessName: phone.verified_name,
         accessTokenEncrypted,
+        appSecretEncrypted,
+        webhookVerifyToken,
         status: "CONNECTED",
         connectedAt: new Date(),
       },
@@ -74,6 +100,8 @@ export const POST = endpoint(async (request) => {
         businessPhone: phone.display_phone_number,
         businessName: phone.verified_name,
         accessTokenEncrypted,
+        appSecretEncrypted,
+        webhookVerifyToken,
         status: "CONNECTED",
         connectedAt: new Date(),
         webhookVerified: false,
@@ -103,6 +131,8 @@ export const DELETE = endpoint(async (request) => {
       where: { merchantId: user.merchantId },
       data: {
         accessTokenEncrypted: "",
+        appSecretEncrypted: null,
+        webhookVerifyToken: null,
         status: "DISCONNECTED",
         webhookVerified: false,
       },

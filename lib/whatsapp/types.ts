@@ -18,6 +18,8 @@ export type IntegrationView = {
   businessName?: string;
   connectedAt?: string;
   webhookVerified: boolean;
+  webhookVerifyToken?: string | null;
+  webhookUrl?: string | null;
   configurationRequired: string[];
   embeddedSignup: { ready: boolean; appId?: string; configId?: string };
 };
