@@ -14,7 +14,7 @@ test("origin validation accepts exact deployment domains and rejects untrusted o
     for (const key of keys) delete process.env[key];
     sameOrigin(request("http://localhost:3000"));
     rejects("http://localhost:3001");
-    process.env.NODE_ENV = "production";
+    process.env[keys[5]] = "production";
     rejects("http://localhost:3000");
     process.env.APP_URL = "https://menu.example/path";
     sameOrigin(request("https://menu.example"));
