@@ -45,6 +45,19 @@ As migrations são incrementais. A primeira registra o schema original; as segui
 
 ## Storage
 
+Para Supabase Storage, crie um bucket público exclusivo para as imagens do cardápio e gere credenciais S3 nas configurações de Storage. Configure na Vercel (Production):
+
+```dotenv
+S3_ENDPOINT="https://SEU_PROJECT_REF.storage.supabase.co/storage/v1/s3"
+S3_REGION="REGIAO_DO_PROJETO"
+S3_ACCESS_KEY_ID="CREDENCIAL_S3"
+S3_SECRET_ACCESS_KEY="SEGREDO_S3"
+S3_BUCKET="pede360-images"
+S3_PUBLIC_URL="https://SEU_PROJECT_REF.supabase.co/storage/v1/object/public/pede360-images"
+```
+
+Use as credenciais S3 geradas para o servidor e a região exibida pelo Supabase. O cliente usa `forcePathStyle` para manter o bucket no caminho do endpoint. Após configurar, faça um redeploy. A conexão `DATABASE_URL` pode continuar na Neon.
+
 - Desenvolvimento: sem variáveis S3, arquivos WebP ficam em `.local/uploads` e são servidos pela rota local de mídia.
 - Produção: configure todas as variáveis S3 de `.env.example`. Compatível com R2 e provedores S3. O bucket precisa permitir leitura pública pelo domínio configurado; credenciais de escrita ficam somente no servidor.
 - JPEG/PNG/WebP até 5 MB, validação com Sharp, orientação corrigida, proporção preservada, limite de resolução e metadados removidos.
