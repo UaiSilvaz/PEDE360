@@ -89,8 +89,19 @@ export async function json(request: Request) {
 }
 export function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  const expected = new URL(process.env.APP_URL || "http://localhost:3000")
-    .origin;
-  if (origin !== expected)
+  const allowed = new Set<string>();
+  if (process.env.APP_URL) allowed.add(new URL(process.env.APP_URL).origin);
+  if (process.env.VERCEL === "1") {
+    for (const domain of [
+      process.env.VERCEL_PROJECT_PRODUCTION_URL,
+      process.env.VERCEL_URL,
+      process.env.VERCEL_BRANCH_URL,
+    ]) {
+      if (domain) allowed.add(new URL(`https://${domain}`).origin);
+    }
+  } else if (!process.env.APP_URL && process.env.NODE_ENV !== "production") {
+    allowed.add("http://localhost:3000");
+  }
+  if (!origin || !allowed.has(origin))
     throw new ApiError(403, "ORIGIN", "Origem não autorizada.");
 }
