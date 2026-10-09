@@ -50,6 +50,16 @@ export const categorySchema = z.object({
   ...imageFields,
 });
 export const merchantSchema = z.object({
+  deliveryState: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .or(z.literal(""))
+    .nullish(),
+  deliveryCityId: z
+    .string()
+    .regex(/^\d{7}$/)
+    .or(z.literal(""))
+    .nullish(),
   appearance: menuAppearanceSchema.optional(),
   primaryColor: z
     .string()

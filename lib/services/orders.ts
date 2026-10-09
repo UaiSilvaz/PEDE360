@@ -6,6 +6,7 @@ import { type OrderInput } from "@/lib/schemas/order";
 import { cents, priceItem } from "./pricing";
 import { audit } from "./audit";
 import { canChangeOrderStatus } from "@/lib/security/permissions";
+import { municipality, normalizePlace } from "@/lib/geography/catalog";
 const include = {
   items: { include: { options: true } },
   customer: true,
@@ -76,6 +77,23 @@ export async function createOrder(
               "CLOSED",
               "Este estabelecimento está fechado.",
             );
+          if (input.type === "DELIVERY" && merchant.deliveryCityId) {
+            const expected = municipality(merchant.deliveryCityId);
+            const matches = input.cityId
+              ? input.cityId === merchant.deliveryCityId
+              : normalizePlace(input.city) ===
+                normalizePlace(merchant.deliveryCity || "");
+            if (!expected || !matches || input.state !== merchant.deliveryState)
+              throw new ApiError(
+                400,
+                "DELIVERY_CITY",
+                "Esta loja entrega somente em " +
+                  merchant.deliveryCity +
+                  " — " +
+                  merchant.deliveryState +
+                  ".",
+              );
+          }
           if (!userId && ["TABLE", "SCHEDULED"].includes(input.type))
             throw new ApiError(400, "TYPE", "Escolha entrega ou retirada.");
           if (!merchant.paymentMethods.includes(input.paymentMethod))
@@ -141,14 +159,30 @@ export async function createOrder(
             );
           let deliveryFee = 0;
           if (input.type === "DELIVERY") {
-            const zone = await tx.deliveryZone.findFirst({
-              where: { id: input.deliveryZoneId, merchantId, active: true },
+            const zones = await tx.deliveryZone.findMany({
+              where: { merchantId, active: true },
             });
+            const zone = zones.find(
+              (value) => value.id === input.deliveryZoneId,
+            );
             if (!zone)
               throw new ApiError(
                 400,
                 "DELIVERY",
                 "Região de entrega inválida.",
+              );
+            const neighborhoodZone = zones.find(
+              (value) =>
+                normalizePlace(value.name) ===
+                normalizePlace(input.neighborhood),
+            );
+            if (neighborhoodZone && neighborhoodZone.id !== zone.id)
+              throw new ApiError(
+                400,
+                "DELIVERY_FEE",
+                "Selecione a taxa de entrega correspondente ao bairro " +
+                  input.neighborhood +
+                  ".",
               );
             deliveryFee = cents(zone.fee);
           }
@@ -230,6 +264,11 @@ export async function createOrder(
                   input.street + ", " + input.number,
                   input.complement,
                   input.neighborhood,
+                  merchant.deliveryCity
+                    ? merchant.deliveryCity + "/" + merchant.deliveryState
+                    : input.city
+                      ? input.city + (input.state ? "/" + input.state : "")
+                      : "",
                   input.reference,
                 ]
                   .filter(Boolean)

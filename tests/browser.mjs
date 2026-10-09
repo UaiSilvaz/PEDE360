@@ -22,6 +22,16 @@ page.on("framenavigated", (frame) => {
 page.on("pageerror", (e) => errors.push(e.message));
 try {
   await page.goto(base + "/cadastro");
+  await page.getByLabel("Estado atendido", { exact: true }).selectOption("SP");
+  await page.waitForFunction(
+    () => !!document.querySelector('option[value="3500204"]'),
+  );
+  await page
+    .getByLabel("Cidade atendida", { exact: true })
+    .selectOption("3500204");
+  await page
+    .getByLabel("WhatsApp da loja", { exact: true })
+    .fill("5511999999999");
   await page.getByLabel("Seu nome").fill("Gestor de teste");
   await page.getByLabel("Nome do estabelecimento").fill("Cozinha de teste");
   await page.getByLabel("Endereço do cardápio", { exact: true }).fill(slug);
@@ -30,7 +40,8 @@ try {
   await page
     .getByRole("button", { name: "Criar estabelecimento", exact: true })
     .click();
-  await page.waitForURL(base + "/painel");
+  await page.waitForURL(base + "/configuracoes/integracoes/whatsapp");
+  await page.goto(base + "/painel");
   await page
     .getByRole("heading", { name: "Seu negócio, mais leve." })
     .waitFor();

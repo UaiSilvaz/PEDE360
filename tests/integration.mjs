@@ -59,6 +59,8 @@ try {
       slug: slugs[0],
       email: "a@example.test",
       password,
+      deliveryState: "SP",
+      deliveryCityId: "3500204",
     },
   });
   check(a.status === 201 && a.cookie, "cadastro cria sessão HttpOnly");
@@ -71,6 +73,8 @@ try {
       slug: slugs[1],
       email: "b@example.test",
       password,
+      deliveryState: "SP",
+      deliveryCityId: "3500204",
     },
   });
   check(b.status === 201 && b.cookie, "segundo estabelecimento independente");
@@ -237,6 +241,9 @@ try {
     name: "Cliente teste",
     phone: "5511999888777",
     street: "Rua A",
+    cityId: "3500204",
+    city: "Adolfo",
+    state: "SP",
     number: "10",
     neighborhood: "Centro",
     deliveryZoneId: zone.data.id,
@@ -338,6 +345,8 @@ try {
       name: "Cozinha",
       email: "k@example.test",
       password,
+      deliveryState: "SP",
+      deliveryCityId: "3500204",
       role: "KITCHEN",
     },
   });

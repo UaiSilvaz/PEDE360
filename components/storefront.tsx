@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,8 @@ import { orderSchema, type OrderInput } from "@/lib/schemas/order";
 import type { Store, CatalogProduct } from "@/lib/view-types";
 import Modal from "./shared/modal";
 import { menuStyle } from "@/lib/menu-appearance";
+import DeliveryAddressFields from "./delivery-address-fields";
+import { normalizePlace } from "@/lib/geography/text";
 type CartItem = {
   key: string;
   product: CatalogProduct;
@@ -152,16 +154,22 @@ function Checkout({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<z.input<typeof orderSchema>, unknown, OrderInput>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
       idempotencyKey: crypto.randomUUID(),
       type: "PICKUP",
+      deliveryZoneId:
+        store.deliveryZones.length === 1 ? store.deliveryZones[0].id : "",
       paymentMethod: store.paymentMethods[0] as OrderInput["paymentMethod"],
       name: "",
       phone: "",
       street: "",
+      cityId: store.deliveryCityId || "",
+      city: store.deliveryCity || "",
+      state: store.deliveryState || "",
       number: "",
       neighborhood: "",
       complement: "",
@@ -180,6 +188,17 @@ function Checkout({
   });
   const type = useWatch({ control, name: "type" });
   const payment = useWatch({ control, name: "paymentMethod" });
+  const cityId = useWatch({ control, name: "cityId" }) || "";
+  const city = useWatch({ control, name: "city" }) || "";
+  const state = useWatch({ control, name: "state" }) || "";
+  const neighborhood = useWatch({ control, name: "neighborhood" }) || "";
+  const street = useWatch({ control, name: "street" }) || "";
+  useEffect(() => {
+    const match = store.deliveryZones.find(
+      (zone) => normalizePlace(zone.name) === normalizePlace(neighborhood),
+    );
+    if (match) setValue("deliveryZoneId", match.id);
+  }, [neighborhood, store.deliveryZones, setValue]);
   const endpoint = admin
     ? "/api/orders"
     : "/api/store/" + store.slug + "/orders";
@@ -285,7 +304,7 @@ function Checkout({
       <div className="form-grid" hidden={step !== 2}>
         <label>
           Como receber
-          <select {...register("type")}>
+          <select aria-label="Como receber" {...register("type")}>
             <option value="PICKUP">Retirada</option>
             <option value="DELIVERY">Entrega</option>
             {admin && (
@@ -299,8 +318,11 @@ function Checkout({
         {type === "DELIVERY" && (
           <>
             <label>
-              Região de entrega
-              <select {...register("deliveryZoneId")}>
+              Taxa de entrega
+              <select
+                aria-label="Taxa de entrega"
+                {...register("deliveryZoneId")}
+              >
                 <option value="">Selecione</option>
                 {store.deliveryZones.map((z) => (
                   <option key={z.id} value={z.id}>
@@ -309,17 +331,24 @@ function Checkout({
                 ))}
               </select>
             </label>
-            <label>
-              Rua
-              <input {...register("street")} />
-            </label>
+            <DeliveryAddressFields
+              store={store}
+              value={{ cityId, city, state, neighborhood, street }}
+              onChange={(values) => {
+                for (const key of [
+                  "cityId",
+                  "city",
+                  "state",
+                  "neighborhood",
+                  "street",
+                ] as const)
+                  if (values[key] !== undefined)
+                    setValue(key, values[key], { shouldDirty: true });
+              }}
+            />
             <label>
               Número
               <input {...register("number")} />
-            </label>
-            <label>
-              Bairro
-              <input {...register("neighborhood")} />
             </label>
             <label>
               Complemento
@@ -405,7 +434,10 @@ function Checkout({
                 ", " +
                 review.input.number +
                 " — " +
-                review.input.neighborhood
+                review.input.neighborhood +
+                (review.input.city
+                  ? " — " + review.input.city + "/" + review.input.state
+                  : "")
               : "Retirada / atendimento no estabelecimento"}
           </p>
           <p>Pagamento: {review.input.paymentMethod}</p>

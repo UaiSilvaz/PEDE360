@@ -17,6 +17,17 @@ export const orderSchema = z
       .or(z.literal(""))
       .optional(),
     street: z.string().max(180).default(""),
+    cityId: z
+      .string()
+      .regex(/^\d{7}$/)
+      .or(z.literal(""))
+      .default(""),
+    city: z.string().trim().max(120).default(""),
+    state: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .or(z.literal(""))
+      .default(""),
     number: z.string().max(20).default(""),
     complement: z.string().max(100).default(""),
     neighborhood: z.string().max(100).default(""),

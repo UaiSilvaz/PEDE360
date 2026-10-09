@@ -6,7 +6,13 @@ import { api } from "@/lib/client";
 import { toast } from "sonner";
 import Link from "next/link";
 import BrandIcon from "./brand-icon";
+import DeliveryRegionFields from "./delivery-region-fields";
 type Fields = {
+  deliveryState: string;
+  deliveryCityId: string;
+  deliveryFee: number;
+  phone: string;
+  autoReplyMessage: string;
   name: string;
   store: string;
   slug: string;
@@ -26,6 +32,7 @@ export default function AuthForm({
     getFieldState,
     formState: { isSubmitting },
   } = useForm<Fields>();
+  const [region, setRegion] = useState({ state: "", cityId: "" });
   const [error, setError] = useState("");
   const [stores, setStores] = useState<{ name: string; slug: string }[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
@@ -56,7 +63,9 @@ export default function AuthForm({
               return;
             }
             toast.success(signup ? "Estabelecimento criado." : "Bem-vindo.");
-            router.push("/painel");
+            router.push(
+              signup ? "/configuracoes/integracoes/whatsapp" : "/painel",
+            );
             router.refresh();
           } catch (e) {
             setError((e as Error).message);
@@ -120,6 +129,67 @@ export default function AuthForm({
                 Este nome forma o link do seu cardápio. Você pode ajustá-lo.
               </small>
             </label>
+          )}
+          {signup && (
+            <>
+              <div className="span-2">
+                <h3>Região que sua loja atende</h3>
+                <p className="field-hint">
+                  Escolha o estado e a cidade de entrega. Os clientes poderão
+                  selecionar os bairros e as ruas dessa cidade.
+                </p>
+              </div>
+              <DeliveryRegionFields
+                state={region.state}
+                cityId={region.cityId}
+                onChange={(state, cityId) => {
+                  setRegion({ state, cityId });
+                  setValue("deliveryState", state);
+                  setValue("deliveryCityId", cityId);
+                }}
+              />
+              <label className="span-2">
+                Frete padrão da cidade (R$)
+                <input
+                  aria-label="Frete padrão da cidade (R$)"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  step="0.01"
+                  defaultValue={0}
+                  required
+                  {...register("deliveryFee", { valueAsNumber: true })}
+                />
+                <small className="field-hint">
+                  Zero significa entrega grátis. Você poderá cadastrar taxas por
+                  bairro em Fretes.
+                </small>
+              </label>
+              <label className="span-2">
+                WhatsApp da loja
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="(11) 99999-9999"
+                  required
+                  {...register("phone")}
+                />
+              </label>
+              <label className="span-2">
+                Mensagem automática de boas-vindas
+                <textarea
+                  required
+                  maxLength={3000}
+                  defaultValue="Olá! Confira nosso cardápio e faça seu pedido:"
+                  {...register("autoReplyMessage")}
+                />
+                <small className="field-hint">
+                  O link do cardápio será incluído automaticamente. Depois do
+                  cadastro, conecte seu número ao WhatsApp oficial para ativar
+                  os envios.
+                </small>
+              </label>
+            </>
           )}
           <label className="span-2">
             E-mail

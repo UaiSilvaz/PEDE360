@@ -61,6 +61,9 @@ model Merchant {
   imageUrl             String?
   imageKey             String?
   address              String?
+  deliveryState        String?
+  deliveryCityId       String?
+  deliveryCity         String?
   estimatedTime        String                @default("40–60 min")
   paymentMethods       String[]              @default(["Pix", "Dinheiro", "Crédito", "Débito"])
   hours                Json?
@@ -497,4 +500,13 @@ model AutoReplyJob {
   nextAttemptAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([state, nextAttemptAt])
+}
+
+model CityAddressDirectory {
+  cityId String @id
+  status String @default("PENDING")
+  data Json @default("{}")
+  sourceUrl String?
+  error String?
+  updatedAt DateTime @updatedAt
 }

@@ -6,6 +6,11 @@ import { ownedImage, cleanupImage } from "@/lib/storage";
 import { audit } from "@/lib/services/audit";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/phone";
+import { after } from "next/server";
+import { deliveryRegion } from "@/lib/geography/catalog";
+import { prepareDirectory } from "@/lib/geography/directory";
+import { ApiError } from "@/lib/api";
+export const maxDuration = 300;
 export const PATCH = endpoint(async (request) => {
   const user = await authorize(request, "settings");
   const input = z
@@ -41,17 +46,35 @@ export const GET = endpoint(async (request) => {
 export const PUT = endpoint(async (request) => {
   const user = await authorize(request, "settings");
   const input = merchantSchema.parse(await json(request));
+  let region = {};
+  if (input.deliveryState || input.deliveryCityId) {
+    try {
+      region = deliveryRegion(
+        input.deliveryState || "",
+        input.deliveryCityId || "",
+      );
+    } catch {
+      throw new ApiError(
+        400,
+        "CITY",
+        "Selecione uma cidade válida do estado escolhido.",
+      );
+    }
+  } else if (input.deliveryState === "" || input.deliveryCityId === "")
+    region = { deliveryState: null, deliveryCityId: null, deliveryCity: null };
   await ownedImage(user.merchantId, input.logoKey, input.logoUrl);
   await ownedImage(user.merchantId, input.coverKey, input.coverUrl);
   await ownedImage(user.merchantId, input.imageKey, input.imageUrl);
   const result = await db.$transaction(async (tx) => {
     const item = await tx.merchant.update({
       where: { id: user.merchantId },
-      data: input,
+      data: { ...input, ...region },
     });
     await audit(tx, user.merchantId, user.id, "Merchant", item.id, "UPDATED");
     return item;
   });
+  if (result.deliveryCityId)
+    after(() => prepareDirectory(result.deliveryCityId!));
   for (const [oldKey, newKey] of [
     [user.merchant.logoKey, input.logoKey],
     [user.merchant.coverKey, input.coverKey],

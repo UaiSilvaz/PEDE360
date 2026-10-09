@@ -20,6 +20,7 @@ import { useWorkspace } from "./workspace-context";
 import StoreAvailability from "./store-availability";
 import MenuAppearanceEditor from "./menu-appearance-editor";
 import { resolveAppearance } from "@/lib/menu-appearance";
+import DeliveryRegionFields from "./delivery-region-fields";
 const tabs = [
   {
     id: "loja",
@@ -142,6 +143,43 @@ function Form({
         )}
         {tab === "loja" && (
           <div className="form-grid">
+            <div className="span-2">
+              <h3>Região de entrega</h3>
+              <p>
+                Defina a cidade atendida para oferecer bairros e ruas aos seus
+                clientes. As taxas continuam em Fretes.
+              </p>
+            </div>
+            <DeliveryRegionFields
+              required={false}
+              state={data.deliveryState || ""}
+              cityId={data.deliveryCityId || ""}
+              onChange={(deliveryState, deliveryCityId) =>
+                setData((current) => ({
+                  ...current,
+                  deliveryState,
+                  deliveryCityId,
+                }))
+              }
+            />
+            {data.deliveryCityId && (
+              <button
+                type="button"
+                className="outline-btn span-2"
+                onClick={async () => {
+                  try {
+                    await api("/api/geography/prepare", { method: "POST" });
+                    toast.success(
+                      "Carregando os endereços da cidade salva. Você pode continuar usando Outro.",
+                    );
+                  } catch (error) {
+                    toast.error((error as Error).message);
+                  }
+                }}
+              >
+                Carregar lista de bairros e ruas da cidade salva
+              </button>
+            )}
             {(
               ["name", "slug", "phone", "address", "estimatedTime"] as const
             ).map((key, i) => (

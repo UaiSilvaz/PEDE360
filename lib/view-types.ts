@@ -33,6 +33,9 @@ export type Category = {
   imageKey: string | null;
 };
 export type Store = {
+  deliveryState?: string | null;
+  deliveryCityId?: string | null;
+  deliveryCity?: string | null;
   primaryColor?: string;
   appearance?: unknown;
   id: string;

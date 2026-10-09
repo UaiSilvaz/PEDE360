@@ -1,16 +1,166 @@
-﻿import { chromium } from '@playwright/test';
-import { PrismaClient } from '@prisma/client';
-import { randomBytes } from 'node:crypto';
-import assert from 'node:assert/strict';
-const base=process.env.APP_URL||'http://localhost:3000',slug='appearance-'+randomBytes(5).toString('hex'),password=randomBytes(18).toString('hex');const db=new PrismaClient();const browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
-try{
- await page.goto(base+'/cadastro');await page.getByLabel('Seu nome').fill('Appearance tester');await page.getByLabel('Nome do estabelecimento').fill('Appearance test store');await page.locator('input[name="slug"]').fill(slug);await page.getByLabel('E-mail',{exact:true}).fill(slug+'@example.test');await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Criar estabelecimento',exact:true}).click();await page.waitForURL(base+'/painel');
- const merchant=await db.merchant.findUniqueOrThrow({where:{slug}});await db.product.create({data:{merchantId:merchant.id,name:'Appearance product',description:'Product description',price:29.9,active:true,featured:true,imageUrl:'/landing/burger.jpg'}});
- await page.goto(base+'/configuracoes?section=aparencia');await page.getByRole('heading',{name:'Personalizar meu card\u00e1pio'}).waitFor();await page.getByRole('button',{name:'Aplicar tema A\u00e7a\u00ed'}).click();await page.getByLabel('Cor do fundo',{exact:true}).fill('#f0eaff');await page.getByLabel('Cor dos bot\u00f5es',{exact:true}).fill('#663399');await page.getByLabel('Fonte do card\u00e1pio').selectOption('classic');await page.getByLabel('Tamanho do texto').selectOption('18');await page.getByLabel('T\u00edtulos em negrito').uncheck();await page.getByLabel('Descri\u00e7\u00f5es em negrito').check();await page.getByLabel('Descri\u00e7\u00f5es em it\u00e1lico').check();await page.getByLabel('Formato dos bot\u00f5es').selectOption('30');await page.getByLabel('Formato dos cart\u00f5es').selectOption('24');
- assert.equal(await page.locator('.menu-preview').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(240, 234, 255)');await page.screenshot({path:'.local/screenshots/menu-appearance-desktop.png',fullPage:true});
- await page.getByRole('button',{name:'Salvar altera\u00e7\u00f5es'}).click();await page.getByText('Configura\u00e7\u00f5es salvas.',{exact:true}).waitFor();await page.reload();await page.getByRole('heading',{name:'Personalizar meu card\u00e1pio'}).waitFor();assert.equal(await page.getByLabel('Cor do fundo',{exact:true}).inputValue(),'#f0eaff');assert(await page.getByLabel('Descri\u00e7\u00f5es em negrito').isChecked());
- const settings=(await (await page.request.get(base+'/api/settings')).json()).data;const invalid=await page.request.put(base+'/api/settings',{headers:{Origin:base},data:{...settings,deliveryMinimum:Number(settings.deliveryMinimum||0),pickupMinimum:Number(settings.pickupMinimum||0),description:settings.description||'',address:settings.address||'',hours:undefined,appearance:{...settings.appearance,backgroundColor:'url(unsafe)'}}});assert.equal(invalid.status(),400);
- await page.setViewportSize({width:390,height:844});assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));await page.screenshot({path:'.local/screenshots/menu-appearance-mobile.png',fullPage:true});
- const publicPage=await browser.newPage({viewport:{width:390,height:844}});await publicPage.goto(base+'/loja/'+slug);await publicPage.locator('.custom-menu h1').waitFor();const style=await publicPage.locator('.custom-menu').evaluate(el=>({background:getComputedStyle(el).backgroundColor,font:getComputedStyle(el).fontFamily}));assert.equal(style.background,'rgb(240, 234, 255)');assert.match(style.font,/Georgia/);assert.equal(await publicPage.locator('.store-product-list h3').first().evaluate(el=>getComputedStyle(el).fontWeight),'500');assert.equal(await publicPage.locator('.store-product-list p').first().evaluate(el=>getComputedStyle(el).fontWeight),'700');assert.equal(await publicPage.locator('.store-cats button.active').evaluate(el=>getComputedStyle(el).borderRadius),'30px');assert(!(await publicPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));await publicPage.screenshot({path:'.local/screenshots/menu-custom-public.png',fullPage:true});
- assert.deepEqual(errors,[]);console.log('Appearance passed: live preview, saving/reloading, colors/font/bold/italic/radius on public menu, invalid CSS rejection, desktop and mobile.');
-}finally{await browser.close();await db.merchant.deleteMany({where:{slug}});await db.$disconnect();}
+﻿import { chromium } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import { randomBytes } from "node:crypto";
+import assert from "node:assert/strict";
+const base = process.env.APP_URL || "http://localhost:3000",
+  slug = "appearance-" + randomBytes(5).toString("hex"),
+  password = randomBytes(18).toString("hex");
+const db = new PrismaClient();
+const browser = await chromium.launch({ channel: "msedge", headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+try {
+  await page.goto(base + "/cadastro");
+  await page.getByLabel("Estado atendido", { exact: true }).selectOption("SP");
+  await page.waitForFunction(
+    () => !!document.querySelector('option[value="3500204"]'),
+  );
+  await page
+    .getByLabel("Cidade atendida", { exact: true })
+    .selectOption("3500204");
+  await page
+    .getByLabel("WhatsApp da loja", { exact: true })
+    .fill("5511999999999");
+  await page.getByLabel("Seu nome").fill("Appearance tester");
+  await page
+    .getByLabel("Nome do estabelecimento")
+    .fill("Appearance test store");
+  await page.locator('input[name="slug"]').fill(slug);
+  await page.getByLabel("E-mail", { exact: true }).fill(slug + "@example.test");
+  await page.getByLabel("Senha", { exact: true }).fill(password);
+  await page
+    .getByRole("button", { name: "Criar estabelecimento", exact: true })
+    .click();
+  await page.waitForURL(base + "/configuracoes/integracoes/whatsapp");
+  await page.goto(base + "/painel");
+  const merchant = await db.merchant.findUniqueOrThrow({ where: { slug } });
+  await db.product.create({
+    data: {
+      merchantId: merchant.id,
+      name: "Appearance product",
+      description: "Product description",
+      price: 29.9,
+      active: true,
+      featured: true,
+      imageUrl: "/landing/burger.jpg",
+    },
+  });
+  await page.goto(base + "/configuracoes?section=aparencia");
+  await page
+    .getByRole("heading", { name: "Personalizar meu card\u00e1pio" })
+    .waitFor();
+  await page
+    .getByRole("button", { name: "Aplicar tema A\u00e7a\u00ed" })
+    .click();
+  await page.getByLabel("Cor do fundo", { exact: true }).fill("#f0eaff");
+  await page.getByLabel("Cor dos bot\u00f5es", { exact: true }).fill("#663399");
+  await page.getByLabel("Fonte do card\u00e1pio").selectOption("classic");
+  await page.getByLabel("Tamanho do texto").selectOption("18");
+  await page.getByLabel("T\u00edtulos em negrito").uncheck();
+  await page.getByLabel("Descri\u00e7\u00f5es em negrito").check();
+  await page.getByLabel("Descri\u00e7\u00f5es em it\u00e1lico").check();
+  await page.getByLabel("Formato dos bot\u00f5es").selectOption("30");
+  await page.getByLabel("Formato dos cart\u00f5es").selectOption("24");
+  assert.equal(
+    await page
+      .locator(".menu-preview")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+    "rgb(240, 234, 255)",
+  );
+  await page.screenshot({
+    path: ".local/screenshots/menu-appearance-desktop.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Salvar altera\u00e7\u00f5es" })
+    .click();
+  await page
+    .getByText("Configura\u00e7\u00f5es salvas.", { exact: true })
+    .waitFor();
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "Personalizar meu card\u00e1pio" })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel("Cor do fundo", { exact: true }).inputValue(),
+    "#f0eaff",
+  );
+  assert(await page.getByLabel("Descri\u00e7\u00f5es em negrito").isChecked());
+  const settings = (
+    await (await page.request.get(base + "/api/settings")).json()
+  ).data;
+  const invalid = await page.request.put(base + "/api/settings", {
+    headers: { Origin: base },
+    data: {
+      ...settings,
+      deliveryMinimum: Number(settings.deliveryMinimum || 0),
+      pickupMinimum: Number(settings.pickupMinimum || 0),
+      description: settings.description || "",
+      address: settings.address || "",
+      hours: undefined,
+      appearance: { ...settings.appearance, backgroundColor: "url(unsafe)" },
+    },
+  });
+  assert.equal(invalid.status(), 400);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert(
+    !(await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    )),
+  );
+  await page.screenshot({
+    path: ".local/screenshots/menu-appearance-mobile.png",
+    fullPage: true,
+  });
+  const publicPage = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+  });
+  await publicPage.goto(base + "/loja/" + slug);
+  await publicPage.locator(".custom-menu h1").waitFor();
+  const style = await publicPage
+    .locator(".custom-menu")
+    .evaluate((el) => ({
+      background: getComputedStyle(el).backgroundColor,
+      font: getComputedStyle(el).fontFamily,
+    }));
+  assert.equal(style.background, "rgb(240, 234, 255)");
+  assert.match(style.font, /Georgia/);
+  assert.equal(
+    await publicPage
+      .locator(".store-product-list h3")
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontWeight),
+    "500",
+  );
+  assert.equal(
+    await publicPage
+      .locator(".store-product-list p")
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontWeight),
+    "700",
+  );
+  assert.equal(
+    await publicPage
+      .locator(".store-cats button.active")
+      .evaluate((el) => getComputedStyle(el).borderRadius),
+    "30px",
+  );
+  assert(
+    !(await publicPage.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    )),
+  );
+  await publicPage.screenshot({
+    path: ".local/screenshots/menu-custom-public.png",
+    fullPage: true,
+  });
+  assert.deepEqual(errors, []);
+  console.log(
+    "Appearance passed: live preview, saving/reloading, colors/font/bold/italic/radius on public menu, invalid CSS rejection, desktop and mobile.",
+  );
+} finally {
+  await browser.close();
+  await db.merchant.deleteMany({ where: { slug } });
+  await db.$disconnect();
+}
