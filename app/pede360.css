@@ -93,12 +93,20 @@ html[data-theme="dark"] .primary-btn:hover {
 .store-cover-label {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
+  left: 14px;
+  top: 14px;
+  padding: 3px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  background: transparent;
+  opacity: 0.25;
 }
 .store-cover-label::before {
   content: "";
-  width: 44px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
   background: url("/brand/PEDE360%202.png") center / contain no-repeat;
 }
 button:focus-visible,
@@ -133,10 +141,6 @@ textarea:focus-visible {
 .auth-brand .pede360-icon {
   width: 88px;
   height: 88px;
-}
-.store-cover-label::before {
-  width: 40px;
-  height: 40px;
 }
 .friendly-shell .primary-btn,
 .auth-card .primary-btn {
